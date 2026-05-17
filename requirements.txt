@@ -1,0 +1,10 @@
+    fastapi 
+    uvicorn[standard] 
+    pandas 
+    numpy 
+    scikit-learn 
+    matplotlib 
+    joblib
+    torch
+    gymnasium
+    stable-baselines3
