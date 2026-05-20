@@ -45,8 +45,8 @@ def run_training_pipeline():
     
     dqn_agent = build_dqn_agent(train_env)
     
-    print("[INFO] Starting RL training (50,000 steps)...")
-    dqn_agent.learn(total_timesteps=50_000, tb_log_name="dqn_ids", progress_bar=True)
+    print("[INFO] Starting RL training...")
+    dqn_agent.learn(total_timesteps=80_000, tb_log_name="dqn_ids", progress_bar=True, log_interval=1)
     dqn_agent.save('dqn_ids_model')
     print("[INFO] DQN Agent saved to dqn_ids_model.zip")
     

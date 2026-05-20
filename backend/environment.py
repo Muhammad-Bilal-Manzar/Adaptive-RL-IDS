@@ -20,6 +20,9 @@ class NetworkIDSEnv(gym.Env):
         
         self.current_idx  = 0
         self._episode_reward = 0.0
+        
+        self.max_episode_steps = 1000
+        self.steps_in_episode = 0
 
         self.action_space = spaces.Discrete(4)
         self.observation_space = spaces.Box(
@@ -37,6 +40,7 @@ class NetworkIDSEnv(gym.Env):
         self.labels_vec   = self.labels_vec[indices]
         
         self.current_idx  = 0
+        self.steps_in_episode = 0
         self._episode_reward = 0.0
         return self.features_mat[self.current_idx], {}
 
@@ -44,9 +48,13 @@ class NetworkIDSEnv(gym.Env):
         true_label = self.labels_vec[self.current_idx]
         reward = self._compute_reward(true_label, action)
         self._episode_reward += reward
+        self.steps_in_episode += 1
         
         self.current_idx += 1
-        terminated = self.current_idx >= self.n_samples
+        terminated = (
+            self.current_idx >= self.n_samples
+            or self.steps_in_episode >= self.max_episode_steps
+        )
         
         obs = self.features_mat[self.current_idx] if not terminated else np.zeros(self.observation_space.shape, dtype=np.float32)
         info = {
@@ -63,4 +71,5 @@ class NetworkIDSEnv(gym.Env):
         elif true_label == 0 and action == NetworkIDSEnv.ACTION_ALLOW: return 10.0
         elif true_label == 0 and action in (NetworkIDSEnv.ACTION_FLAG, NetworkIDSEnv.ACTION_BLOCK): return -5.0
         elif true_label == 1 and action == NetworkIDSEnv.ACTION_ALLOW: return -100.0
+        elif true_label == 1 and action == NetworkIDSEnv.ACTION_INSPECT: return 20.0
         else: return -1.0
