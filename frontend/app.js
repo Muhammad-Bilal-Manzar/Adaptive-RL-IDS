@@ -17,23 +17,22 @@ const metricIds = {
   snortTP: document.getElementById("snortTP"),
   snortFN: document.getElementById("snortFN"),
   snortFP: document.getElementById("snortFP"),
-  rfTotal: document.getElementById("rfTotal"),
-  rfTP: document.getElementById("rfTP"),
-  rfFN: document.getElementById("rfFN"),
-  rfFP: document.getElementById("rfFP"),
+  snortTN: document.getElementById("snortTN"),
   dqnTotal: document.getElementById("dqnTotal"),
   dqnTP: document.getElementById("dqnTP"),
   dqnFN: document.getElementById("dqnFN"),
   dqnFP: document.getElementById("dqnFP"),
+  dqnTN: document.getElementById("dqnTN"),
 };
 
 let socket = null;
 let connected = false;
 let metrics = {
   snort: { total: 0, tp: 0, fn: 0, fp: 0, tn: 0 },
-  rf:    { total: 0, tp: 0, fn: 0, fp: 0, tn: 0 },
   dqn:   { total: 0, tp: 0, fn: 0, fp: 0, tn: 0 },
 };
+
+const ACTION_NAMES = ["Allow", "Flag", "Block", "Inspect"];
 
 // ── Chart history buffers ──────────────────────────────────────────────────
 const MAX_POINTS = 40; // rolling window of packets shown in time-series charts
@@ -50,11 +49,11 @@ const chartHistory = {
 // ── Chart colour constants ─────────────────────────────────────────────────
 const C = {
   snort: "#6bc7ff",
-  rf:    "#5dd17f",
   dqn:   "#ffc56b",
   tp:    "rgba(93,209,127,.75)",
   fn:    "rgba(255,111,111,.75)",
   fp:    "rgba(255,197,107,.75)",
+  tn:    "rgba(107,199,255,.75)",
   act0:  "rgba(93,209,127,.75)",
   act1:  "rgba(107,199,255,.65)",
   act2:  "rgba(255,111,111,.75)",
@@ -76,13 +75,13 @@ function axisDefaults() {
 const fpChart = new Chart(document.getElementById("fpChart"), {
   type: "bar",
   data: {
-    labels: ["Snort", "RF", "DQN"],
+    labels: ["Snort", "DQN"],
     datasets: [
       {
         label: "FP rate %",
-        data: [0, 0, 0],
-        backgroundColor: ["rgba(107,199,255,.7)", "rgba(93,209,127,.7)", "rgba(255,197,107,.7)"],
-        borderColor: [C.snort, C.rf, C.dqn],
+        data: [0, 0],
+        backgroundColor: ["rgba(107,199,255,.7)", "rgba(255,197,107,.7)"],
+        borderColor: [C.snort, C.dqn],
         borderWidth: 1,
         borderRadius: 6,
       },
@@ -111,12 +110,12 @@ function makeDonut(canvasId) {
   return new Chart(document.getElementById(canvasId), {
     type: "doughnut",
     data: {
-      labels: ["TP", "FN", "FP"],
+      labels: ["TP", "FN", "FP", "TN"],
       datasets: [
         {
-          data: [0, 0, 0],
-          backgroundColor: [C.tp, C.fn, C.fp],
-          borderColor: [C.rf, C.act2, C.dqn],
+          data: [0, 0, 0, 0],
+          backgroundColor: [C.tp, C.fn, C.fp, C.tn],
+          borderColor: [C.snort, C.act2, C.dqn, C.snort],
           borderWidth: 1,
           hoverOffset: 4,
         },
@@ -138,7 +137,6 @@ function makeDonut(canvasId) {
 }
 
 const snortDonut = makeDonut("snortDonut");
-const rfDonut    = makeDonut("rfDonut");
 const dqnDonut   = makeDonut("dqnDonut");
 
 // ── DQN action stacked bar chart ───────────────────────────────────────────
@@ -147,10 +145,10 @@ const actionChart = new Chart(document.getElementById("actionChart"), {
   data: {
     labels: [],
     datasets: [
-      { label: "Allow (0)",    data: [], backgroundColor: C.act0, borderColor: C.rf,    borderWidth: 1 },
-      { label: "Monitor (1)",  data: [], backgroundColor: C.act1, borderColor: C.snort, borderWidth: 1 },
-      { label: "Block (2)",    data: [], backgroundColor: C.act2, borderColor: "#ff6f6f", borderWidth: 1 },
-      { label: "Throttle (3)", data: [], backgroundColor: C.act3, borderColor: C.dqn,  borderWidth: 1 },
+      { label: "Allow (0)",   data: [], backgroundColor: C.act0, borderColor: C.snort, borderWidth: 1 },
+      { label: "Flag (1)",    data: [], backgroundColor: C.act1, borderColor: C.snort, borderWidth: 1 },
+      { label: "Block (2)",   data: [], backgroundColor: C.act2, borderColor: "#ff6f6f", borderWidth: 1 },
+      { label: "Inspect (3)", data: [], backgroundColor: C.act3, borderColor: C.dqn,   borderWidth: 1 },
     ],
   },
   options: {
@@ -178,7 +176,6 @@ function pushRolling(arr, val) {
 
 function updateCharts(packetId, dqnAction) {
   const s = metrics.snort;
-  const r = metrics.rf;
   const d = metrics.dqn;
 
   // ── Accuracy line chart ──
@@ -188,17 +185,14 @@ function updateCharts(packetId, dqnAction) {
   // ── False-positive bar chart ──
   fpChart.data.datasets[0].data = [
     pct(s.fp, s.total),
-    pct(r.fp, r.total),
     pct(d.fp, d.total),
   ];
   fpChart.update();
 
   // ── Donuts ──
-  snortDonut.data.datasets[0].data = [s.tp, s.fn, s.fp];
-  rfDonut.data.datasets[0].data    = [r.tp, r.fn, r.fp];
-  dqnDonut.data.datasets[0].data   = [d.tp, d.fn, d.fp];
+  snortDonut.data.datasets[0].data = [s.tp, s.fn, s.fp, s.tn];
+  dqnDonut.data.datasets[0].data   = [d.tp, d.fn, d.fp, d.tn];
   snortDonut.update();
-  rfDonut.update();
   dqnDonut.update();
 
   // ── DQN action stacked bar ──
@@ -218,11 +212,11 @@ function updateCharts(packetId, dqnAction) {
 function resetCharts() {
   Object.keys(chartHistory).forEach((k) => (chartHistory[k] = []));
 
-  fpChart.data.datasets[0].data = [0, 0, 0];
+  fpChart.data.datasets[0].data = [0, 0];
   fpChart.update();
 
-  [snortDonut, rfDonut, dqnDonut].forEach((c) => {
-    c.data.datasets[0].data = [0, 0, 0];
+  [snortDonut, dqnDonut].forEach((c) => {
+    c.data.datasets[0].data = [0, 0, 0, 0];
     c.update();
   });
 
@@ -237,20 +231,17 @@ function updateMetricsCards() {
   metricIds.snortTP.textContent    = metrics.snort.tp;
   metricIds.snortFN.textContent    = metrics.snort.fn;
   metricIds.snortFP.textContent    = metrics.snort.fp;
-  metricIds.rfTotal.textContent    = metrics.rf.total;
-  metricIds.rfTP.textContent       = metrics.rf.tp;
-  metricIds.rfFN.textContent       = metrics.rf.fn;
-  metricIds.rfFP.textContent       = metrics.rf.fp;
+  metricIds.snortTN.textContent    = metrics.snort.tn;
   metricIds.dqnTotal.textContent   = metrics.dqn.total;
   metricIds.dqnTP.textContent      = metrics.dqn.tp;
   metricIds.dqnFN.textContent      = metrics.dqn.fn;
   metricIds.dqnFP.textContent      = metrics.dqn.fp;
+  metricIds.dqnTN.textContent      = metrics.dqn.tn;
 }
 
 function resetMetrics() {
   metrics = {
     snort: { total: 0, tp: 0, fn: 0, fp: 0, tn: 0 },
-    rf:    { total: 0, tp: 0, fn: 0, fp: 0, tn: 0 },
     dqn:   { total: 0, tp: 0, fn: 0, fp: 0, tn: 0 },
   };
   updateMetricsCards();
@@ -304,12 +295,13 @@ function sendCommand(command) {
 function processPayload(payload) {
   const packetId    = payload.packet_id;
   const actualLabel = payload.actual_label;
-  const { snort, rf, dqn } = payload.predictions;
+  const { snort, dqn } = payload.predictions;
   const explanation = dqn.explanation || [];
+  const defensive = dqn.defensive ?? dqn.action !== 0;
+  const actionName = ACTION_NAMES[dqn.action] ?? String(dqn.action);
 
   // Update counts
   metrics.snort.total += 1;
-  metrics.rf.total    += 1;
   metrics.dqn.total   += 1;
 
   if (snort === 1 && actualLabel === 1) metrics.snort.tp += 1;
@@ -317,15 +309,10 @@ function processPayload(payload) {
   if (snort === 0 && actualLabel === 1) metrics.snort.fn += 1;
   if (snort === 0 && actualLabel === 0) metrics.snort.tn += 1;
 
-  if (rf === 1 && actualLabel === 1) metrics.rf.tp += 1;
-  if (rf === 1 && actualLabel === 0) metrics.rf.fp += 1;
-  if (rf === 0 && actualLabel === 1) metrics.rf.fn += 1;
-  if (rf === 0 && actualLabel === 0) metrics.rf.tn += 1;
-
-  if (dqn.prediction === 1 && actualLabel === 1) metrics.dqn.tp += 1;
-  if (dqn.prediction === 1 && actualLabel === 0) metrics.dqn.fp += 1;
-  if (dqn.prediction === 0 && actualLabel === 1) metrics.dqn.fn += 1;
-  if (dqn.prediction === 0 && actualLabel === 0) metrics.dqn.tn += 1;
+  if (defensive && actualLabel === 1) metrics.dqn.tp += 1;
+  if (defensive && actualLabel === 0) metrics.dqn.fp += 1;
+  if (!defensive && actualLabel === 1) metrics.dqn.fn += 1;
+  if (!defensive && actualLabel === 0) metrics.dqn.tn += 1;
 
   updateMetricsCards();
   updateCharts(packetId, dqn.action);
@@ -336,8 +323,12 @@ function processPayload(payload) {
     dqnMessage = `🚨 DQN: Malicious payload blocked! (Packet #${packetId})`;
   } else if (dqn.action === 0 && actualLabel === 0) {
     dqnMessage = `✅ DQN: Normal traffic allowed. (Packet #${packetId})`;
-  } else if ([1, 3].includes(dqn.action)) {
-    dqnMessage = `⚠️ DQN: Traffic flagged for manual inspection. (Packet #${packetId})`;
+  } else if (dqn.action === 1) {
+    dqnMessage = `⚠️ DQN: Traffic flagged for review. (Packet #${packetId})`;
+  } else if (dqn.action === 3) {
+    dqnMessage = `🔍 DQN: Traffic sent for deep inspection. (Packet #${packetId})`;
+  } else if (dqn.action === 0 && actualLabel === 1) {
+    dqnMessage = `❌ DQN: Attack allowed through. (Packet #${packetId})`;
   } else {
     dqnMessage = `ℹ️ Processing packet #${packetId}...`;
   }
@@ -346,8 +337,7 @@ function processPayload(payload) {
     <div><strong>Packet #${packetId}</strong></div>
     <div>Actual: <strong>${actualLabel === 1 ? "Malicious" : "Normal"}</strong></div>
     <div>Snort: <strong>${snort === 1 ? "Malicious" : "Normal"}</strong></div>
-    <div>Random Forest: <strong>${rf === 1 ? "Malicious" : "Normal"}</strong></div>
-    <div>DQN Action: <strong>${dqn.action}</strong> — Prediction: <strong>${dqn.prediction === 1 ? "Malicious" : "Normal"}</strong></div>
+    <div>DQN: <strong>${actionName}</strong> (${dqn.action})</div>
     <div style="margin-top:12px;font-weight:600;">${dqnMessage}</div>
   `;
 

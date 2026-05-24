@@ -26,16 +26,16 @@ def evaluate_dqn(agent, eval_env):
     print("\n[INFO] Evaluating trained DQN...")
     obs, _ = eval_env.reset(seed=0)
     
-    rewards, actions, true_lbls = [], [], []
+    rewards, actions = [], []
+
     while True:
         action, _ = agent.predict(obs, deterministic=True)
         obs, reward, terminated, truncated, info = eval_env.step(int(action))
         
         rewards.append(reward)
         actions.append(int(action))
-        true_lbls.append(info['true_label'])
-        
+
         if terminated or truncated:
             break
             
-    return rewards, actions, true_lbls
+    return rewards, actions

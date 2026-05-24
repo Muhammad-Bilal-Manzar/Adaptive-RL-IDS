@@ -1,4 +1,10 @@
-﻿from pathlib import Path
+﻿import sys
+from pathlib import Path
+
+_BACKEND_DIR = Path(__file__).resolve().parent
+if str(_BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_DIR))
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
@@ -8,6 +14,8 @@ import asyncio
 import json
 import warnings
 from stable_baselines3 import DQN
+
+from environment import NetworkIDSEnv
 
 warnings.filterwarnings("ignore")
 
@@ -28,7 +36,6 @@ app.add_middleware(
 
 # --- GLOBAL ARTIFACTS ---
 scaler = None
-rf_model = None
 dqn_agent = None
 X_raw = None
 y_true = None
@@ -36,15 +43,13 @@ FEATURE_COLS = None
 
 @app.on_event("startup")
 async def load_artifacts():
-    global scaler, rf_model, dqn_agent, X_raw, y_true, FEATURE_COLS
+    global scaler, dqn_agent, X_raw, y_true, FEATURE_COLS
     print("[INFO] Loading ML Artifacts into memory...")
     try:
         scaler_path = MODEL_DIR / 'ids_minmax_scaler.pkl'
-        rf_path = MODEL_DIR / 'ids_rf_baseline.pkl'
         dqn_path = MODEL_DIR / 'dqn_ids_model.zip'
 
         scaler = joblib.load(scaler_path)
-        rf_model = joblib.load(rf_path)
         dqn_agent = DQN.load(dqn_path)
 
         data_file = DATA_DIR / 'test_traffic.csv'
@@ -105,14 +110,13 @@ async def websocket_stream(websocket: WebSocket):
                     features = np.clip(features + noise, 0.0, 1.0).astype(np.float32)
 
                 snort_pred = simulate_snort(features)
-                rf_pred = int(rf_model.predict(features.reshape(1, -1))[0])
                 action, _ = dqn_agent.predict(features, deterministic=True)
                 dqn_action = int(action)
-                dqn_pred = 0 if dqn_action == 0 else 1
+                defensive = dqn_action != NetworkIDSEnv.ACTION_ALLOW
 
                 explanation = []
-                if dqn_action == 2 and actual == 1:
-                    top_idx = np.argsort(features)[-3:]
+                if dqn_action == NetworkIDSEnv.ACTION_BLOCK and actual == 1:
+                    top_idx = np.argsort(features)[-5:]
                     explanation = [
                         {"feature": FEATURE_COLS[idx], "value": float(features[idx])}
                         for idx in top_idx[::-1]
@@ -123,10 +127,9 @@ async def websocket_stream(websocket: WebSocket):
                     "actual_label": actual,
                     "predictions": {
                         "snort": snort_pred,
-                        "rf": rf_pred,
                         "dqn": {
                             "action": dqn_action,
-                            "prediction": dqn_pred,
+                            "defensive": defensive,
                             "explanation": explanation,
                         },
                     },

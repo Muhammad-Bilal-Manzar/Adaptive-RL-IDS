@@ -12,7 +12,7 @@
     <header class="topbar">
       <div>
         <h1>🛡️ Adaptive Network IDS</h1>
-        <p>Compare Snort rule-based logic, Random Forest detection, and DQN reinforcement learning in real time.</p>
+        <p>Compare Snort rule-based logic and DQN reinforcement learning in real time.</p>
       </div>
       <div class="status-pill" id="connectionStatus">Connecting...</div>
     </header>
@@ -43,16 +43,7 @@
           <div><strong>Caught (TP)</strong> <span id="snortTP">0</span></div>
           <div><strong>Missed (FN)</strong> <span id="snortFN">0</span></div>
           <div><strong>False Alarms (FP)</strong> <span id="snortFP">0</span></div>
-        </div>
-      </div>
-
-      <div class="metric-card" id="rfCard">
-        <h2>🌲 Random Forest</h2>
-        <div class="metric-list">
-          <div><strong>Total Processed</strong> <span id="rfTotal">0</span></div>
-          <div><strong>Caught (TP)</strong> <span id="rfTP">0</span></div>
-          <div><strong>Missed (FN)</strong> <span id="rfFN">0</span></div>
-          <div><strong>False Alarms (FP)</strong> <span id="rfFP">0</span></div>
+          <div><strong>Correct (TN)</strong> <span id="snortTN">0</span></div>
         </div>
       </div>
 
@@ -63,6 +54,7 @@
           <div><strong>Caught (TP)</strong> <span id="dqnTP">0</span></div>
           <div><strong>Missed (FN)</strong> <span id="dqnFN">0</span></div>
           <div><strong>False Alarms (FP)</strong> <span id="dqnFP">0</span></div>
+          <div><strong>Correct (TN)</strong> <span id="dqnTN">0</span></div>
         </div>
       </div>
     </section>
@@ -85,7 +77,6 @@
         <h2>🚨 False Positive Rate</h2>
         <div class="chart-legend">
           <span><span class="leg-swatch" style="background:#6bc7ff"></span>Snort</span>
-          <span><span class="leg-swatch" style="background:#5dd17f"></span>RF</span>
           <span><span class="leg-swatch" style="background:#ffc56b"></span>DQN</span>
         </div>
         <div class="chart-wrap">
@@ -93,28 +84,17 @@
         </div>
       </div>
 
-      <div class="chart-row-3">
+      <div class="chart-row-2">
         <div class="chart-card">
           <h2>📜 Snort Breakdown</h2>
           <div class="chart-legend">
             <span><span class="leg-swatch" style="background:#5dd17f"></span>TP</span>
             <span><span class="leg-swatch" style="background:#ff6f6f"></span>FN</span>
             <span><span class="leg-swatch" style="background:#ffc56b"></span>FP</span>
+            <span><span class="leg-swatch" style="background:#6bc7ff"></span>TN</span>
           </div>
           <div class="chart-wrap-sm">
-            <canvas id="snortDonut" role="img" aria-label="Doughnut chart showing Snort true positive, false negative, and false positive breakdown">Snort TP/FN/FP breakdown.</canvas>
-          </div>
-        </div>
-
-        <div class="chart-card">
-          <h2>🌲 RF Breakdown</h2>
-          <div class="chart-legend">
-            <span><span class="leg-swatch" style="background:#5dd17f"></span>TP</span>
-            <span><span class="leg-swatch" style="background:#ff6f6f"></span>FN</span>
-            <span><span class="leg-swatch" style="background:#ffc56b"></span>FP</span>
-          </div>
-          <div class="chart-wrap-sm">
-            <canvas id="rfDonut" role="img" aria-label="Doughnut chart showing Random Forest true positive, false negative, and false positive breakdown">RF TP/FN/FP breakdown.</canvas>
+            <canvas id="snortDonut" role="img" aria-label="Doughnut chart showing Snort TP, FN, FP, and TN breakdown">Snort TP/FN/FP/TN breakdown.</canvas>
           </div>
         </div>
 
@@ -124,9 +104,10 @@
             <span><span class="leg-swatch" style="background:#5dd17f"></span>TP</span>
             <span><span class="leg-swatch" style="background:#ff6f6f"></span>FN</span>
             <span><span class="leg-swatch" style="background:#ffc56b"></span>FP</span>
+            <span><span class="leg-swatch" style="background:#6bc7ff"></span>TN</span>
           </div>
           <div class="chart-wrap-sm">
-            <canvas id="dqnDonut" role="img" aria-label="Doughnut chart showing DQN true positive, false negative, and false positive breakdown">DQN TP/FN/FP breakdown.</canvas>
+            <canvas id="dqnDonut" role="img" aria-label="Doughnut chart showing DQN TP, FN, FP, and TN breakdown">DQN TP/FN/FP/TN breakdown.</canvas>
           </div>
         </div>
       </div>
@@ -135,9 +116,9 @@
         <h2>🎮 DQN Action Distribution Over Time</h2>
         <div class="chart-legend">
           <span><span class="leg-swatch" style="background:#5dd17f"></span>Allow (0)</span>
-          <span><span class="leg-swatch" style="background:#6bc7ff"></span>Monitor (1)</span>
+          <span><span class="leg-swatch" style="background:#6bc7ff"></span>Flag (1)</span>
           <span><span class="leg-swatch" style="background:#ff6f6f"></span>Block (2)</span>
-          <span><span class="leg-swatch" style="background:#ffc56b"></span>Throttle (3)</span>
+          <span><span class="leg-swatch" style="background:#ffc56b"></span>Inspect (3)</span>
         </div>
         <div class="chart-wrap">
           <canvas id="actionChart" role="img" aria-label="Stacked bar chart showing distribution of DQN actions per packet over time">DQN action distribution over streamed packets.</canvas>
