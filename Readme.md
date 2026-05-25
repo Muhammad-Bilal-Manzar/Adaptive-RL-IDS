@@ -1,10 +1,10 @@
 # Adaptive RL Intrusion Detection System
 
-This repository contains an adaptive intrusion detection system (IDS) built with reinforcement learning and traditional baselines. It includes data preprocessing, model training, and an optional frontend interface for experiment visualization.
+This repository contains an adaptive intrusion detection system (IDS) built with reinforcement learning. It includes data preprocessing, model training, and anfrontend interface for experiment visualization.
 
 ## What’s Included
 
-- `backend/` - Python modules for environment setup, preprocessing, rule-based detection, baseline modeling, DQN agent training, and utilities.
+- `backend/` - Python modules for environment setup, preprocessing, DQN agent training, and utilities.
 - `frontend/` - Simple web interface files for demo or visualization.
 - `data/` - Test traffic data and raw dataset storage.
 - `models/` - Saved model artifacts and checkpoints.
@@ -15,7 +15,6 @@ This repository contains an adaptive intrusion detection system (IDS) built with
 
 - `backend/environment.py` - custom IDS environment definition.
 - `backend/preprocess_data.py` - data cleaning, feature preparation, and scaling.
-- `backend/baseline_rf.py` - baseline random forest model implementation.
 - `backend/dqn_agent.py` - deep Q-learning agent implementation.
 - `backend/train.py` - training orchestration for baseline and RL agents.
 - `backend/main.py` - entry point for running experiments or evaluation.
@@ -68,4 +67,4 @@ Open the notebooks in `notebooks/` for step-by-step experiments and model evalua
 
 ---
 
-This repository is designed for academic experimentation with adaptive RL-based intrusion detection and baseline model comparison.
+This repository is designed for academic experimentation with adaptive RL-based intrusion detection.
