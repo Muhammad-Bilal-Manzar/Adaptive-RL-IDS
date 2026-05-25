@@ -13,6 +13,7 @@ import joblib
 import asyncio
 import json
 import warnings
+import torch
 from stable_baselines3 import DQN
 
 from environment import NetworkIDSEnv
@@ -65,10 +66,6 @@ async def load_artifacts():
     except Exception as e:
         print(f"[ERROR] Failed to load artifacts: {e}")
 
-# --- HELPER: SNORT SIMULATOR ---
-def simulate_snort(features):
-    return 1 if (features[1] > 0.5 or features[4] > 0.5) else 0
-
 # --- WEBSOCKET ENDPOINT (LIVE STREAM) ---
 @app.websocket("/ws/stream")
 async def websocket_stream(websocket: WebSocket):
@@ -106,16 +103,37 @@ async def websocket_stream(websocket: WebSocket):
                 actual = int(y_true[current_idx])
 
                 if evasion_attack and actual == 1:
-                    noise = np.random.uniform(-0.1, 0.1, size=features.shape)
+                    noise = np.random.uniform(-0.5, 0.5, size=features.shape)
                     features = np.clip(features + noise, 0.0, 1.0).astype(np.float32)
 
-                snort_pred = simulate_snort(features)
-                action, _ = dqn_agent.predict(features, deterministic=True)
-                dqn_action = int(action)
+                # --- DQN INFERENCE (SOFTMAX & THRESHOLD) ---
+                # Extract raw Q-values from the DQN's neural network using PyTorch
+                obs_tensor = torch.tensor(features.reshape(1, -1)).to(dqn_agent.device)
+                with torch.no_grad():
+                    q_values = dqn_agent.q_net(obs_tensor).cpu().numpy()[0]
+                
+                # Convert raw Q-values to percentage probabilities (Softmax)
+                exp_q = np.exp(q_values - np.max(q_values))
+                probabilities = exp_q / np.sum(exp_q)
+                
+                # Identify the AI's intended action and its confidence
+                dqn_action = int(np.argmax(probabilities))
+                confidence = float(np.max(probabilities))
+                
+                # Human-in-the-Loop Override Threshold (85%)
+                human_intervention = False
+                if confidence < 0.85:
+                    human_intervention = True
+                    if dqn_action == NetworkIDSEnv.ACTION_BLOCK:   # Wanted to Block -> Reroute to Inspect
+                        dqn_action = NetworkIDSEnv.ACTION_INSPECT
+                    elif dqn_action == NetworkIDSEnv.ACTION_ALLOW: # Wanted to Allow -> Reroute to Flag
+                        dqn_action = NetworkIDSEnv.ACTION_FLAG
+                
                 defensive = dqn_action != NetworkIDSEnv.ACTION_ALLOW
 
+                # XAI Diagnostics
                 explanation = []
-                if dqn_action == NetworkIDSEnv.ACTION_BLOCK and actual == 1:
+                if dqn_action in [NetworkIDSEnv.ACTION_BLOCK, NetworkIDSEnv.ACTION_INSPECT] and actual == 1:
                     top_idx = np.argsort(features)[-5:]
                     explanation = [
                         {"feature": FEATURE_COLS[idx], "value": float(features[idx])}
@@ -126,10 +144,11 @@ async def websocket_stream(websocket: WebSocket):
                     "packet_id": current_idx,
                     "actual_label": actual,
                     "predictions": {
-                        "snort": snort_pred,
                         "dqn": {
                             "action": dqn_action,
                             "defensive": defensive,
+                            "confidence": round(confidence * 100, 2), # e.g., 92.45
+                            "human_intervention": human_intervention,
                             "explanation": explanation,
                         },
                     },

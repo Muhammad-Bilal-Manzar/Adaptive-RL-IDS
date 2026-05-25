@@ -12,7 +12,7 @@
     <header class="topbar">
       <div>
         <h1>🛡️ Adaptive Network IDS</h1>
-        <p>Compare Snort rule-based logic and DQN reinforcement learning in real time.</p>
+        <p>Monitor DQN reinforcement learning IDS decisions in real time.</p>
       </div>
       <div class="status-pill" id="connectionStatus">Connecting...</div>
     </header>
@@ -36,17 +36,6 @@
         </label>
       </div>
 
-      <div class="metric-card" id="snortCard">
-        <h2>📜 Rule-Based (Snort Sim)</h2>
-        <div class="metric-list">
-          <div><strong>Total Processed</strong> <span id="snortTotal">0</span></div>
-          <div><strong>Caught (TP)</strong> <span id="snortTP">0</span></div>
-          <div><strong>Missed (FN)</strong> <span id="snortFN">0</span></div>
-          <div><strong>False Alarms (FP)</strong> <span id="snortFP">0</span></div>
-          <div><strong>Correct (TN)</strong> <span id="snortTN">0</span></div>
-        </div>
-      </div>
-
       <div class="metric-card" id="dqnCard">
         <h2>🧠 Deep Q-Network</h2>
         <div class="metric-list">
@@ -61,7 +50,7 @@
 
     <section class="feed-panel">
       <div class="feed-card">
-        <h2>📡 Live Network Traffic Feed</h2>
+        <h2>📡 Live Network Traffic Feed <span id="dqn-confidence" style="font-size: 0.7em; float: right; padding: 4px 10px; border-radius: 12px; background: rgba(255,255,255,0.1);">Confidence: --%</span></h2>
         <div class="feed-output" id="liveFeed">Ready. Click Start to stream packets.</div>
       </div>
       <div class="feed-card">
@@ -70,55 +59,38 @@
       </div>
     </section>
 
-    <!-- ── CHARTS SECTION ── -->
     <section class="charts-panel">
 
       <div class="chart-card chart-full">
         <h2>🚨 False Positive Rate</h2>
         <div class="chart-legend">
-          <span><span class="leg-swatch" style="background:#6bc7ff"></span>Snort</span>
           <span><span class="leg-swatch" style="background:#ffc56b"></span>DQN</span>
         </div>
         <div class="chart-wrap">
-          <canvas id="fpChart" role="img" aria-label="Bar chart comparing false positive rates for each detection model">False positive rate comparison.</canvas>
+          <canvas id="fpChart" role="img" aria-label="Bar chart showing DQN false positive rate">DQN false positive rate.</canvas>
         </div>
       </div>
 
-      <div class="chart-row-2">
-        <div class="chart-card">
-          <h2>📜 Snort Breakdown</h2>
-          <div class="chart-legend">
-            <span><span class="leg-swatch" style="background:#5dd17f"></span>TP</span>
-            <span><span class="leg-swatch" style="background:#ff6f6f"></span>FN</span>
-            <span><span class="leg-swatch" style="background:#ffc56b"></span>FP</span>
-            <span><span class="leg-swatch" style="background:#6bc7ff"></span>TN</span>
-          </div>
-          <div class="chart-wrap-sm">
-            <canvas id="snortDonut" role="img" aria-label="Doughnut chart showing Snort TP, FN, FP, and TN breakdown">Snort TP/FN/FP/TN breakdown.</canvas>
-          </div>
+      <div class="chart-card chart-full">
+        <h2>🧠 DQN Breakdown</h2>
+        <div class="chart-legend">
+          <span><span class="leg-swatch" style="background:#5dd17f"></span>TP</span>
+          <span><span class="leg-swatch" style="background:#ff6f6f"></span>FN</span>
+          <span><span class="leg-swatch" style="background:#ffc56b"></span>FP</span>
+          <span><span class="leg-swatch" style="background:#6bc7ff"></span>TN</span>
         </div>
-
-        <div class="chart-card">
-          <h2>🧠 DQN Breakdown</h2>
-          <div class="chart-legend">
-            <span><span class="leg-swatch" style="background:#5dd17f"></span>TP</span>
-            <span><span class="leg-swatch" style="background:#ff6f6f"></span>FN</span>
-            <span><span class="leg-swatch" style="background:#ffc56b"></span>FP</span>
-            <span><span class="leg-swatch" style="background:#6bc7ff"></span>TN</span>
-          </div>
-          <div class="chart-wrap-sm">
-            <canvas id="dqnDonut" role="img" aria-label="Doughnut chart showing DQN TP, FN, FP, and TN breakdown">DQN TP/FN/FP/TN breakdown.</canvas>
-          </div>
+        <div class="chart-wrap-sm">
+          <canvas id="dqnDonut" role="img" aria-label="Doughnut chart showing DQN TP, FN, FP, and TN breakdown">DQN TP/FN/FP/TN breakdown.</canvas>
         </div>
       </div>
 
       <div class="chart-card chart-full">
         <h2>🎮 DQN Action Distribution Over Time</h2>
-        <div class="chart-legend">
-          <span><span class="leg-swatch" style="background:#5dd17f"></span>Allow (0)</span>
-          <span><span class="leg-swatch" style="background:#6bc7ff"></span>Flag (1)</span>
-          <span><span class="leg-swatch" style="background:#ff6f6f"></span>Block (2)</span>
-          <span><span class="leg-swatch" style="background:#ffc56b"></span>Inspect (3)</span>
+        <div class="chart-legend" id="actionChartLegend">
+          <span><span class="leg-swatch" style="background:#5dd17f"></span>Allow (0) <strong class="action-count" id="actionCount0">0</strong></span>
+          <span><span class="leg-swatch" style="background:#6bc7ff"></span>Flag (1) <strong class="action-count" id="actionCount1">0</strong></span>
+          <span><span class="leg-swatch" style="background:#ff6f6f"></span>Block (2) <strong class="action-count" id="actionCount2">0</strong></span>
+          <span><span class="leg-swatch" style="background:#ffc56b"></span>Inspect (3) <strong class="action-count" id="actionCount3">0</strong></span>
         </div>
         <div class="chart-wrap">
           <canvas id="actionChart" role="img" aria-label="Stacked bar chart showing distribution of DQN actions per packet over time">DQN action distribution over streamed packets.</canvas>
@@ -126,9 +98,7 @@
       </div>
 
     </section>
-    <!-- ── END CHARTS ── -->
-
-  </div>
+    </div>
   <script src="app.js"></script>
 </body>
 </html>

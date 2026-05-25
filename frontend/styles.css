@@ -63,7 +63,7 @@ body {
 .controls-panel {
   display: grid;
   gap: 20px;
-  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
   margin-bottom: 24px;
 }
 
@@ -230,6 +230,12 @@ input[type="checkbox"] {
   height: 10px;
   border-radius: 2px;
   flex-shrink: 0;
+}
+
+.action-count {
+  color: var(--text);
+  font-weight: 600;
+  min-width: 2ch;
 }
 
 .leg-swatch.dashed {
