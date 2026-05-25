@@ -1,6 +1,6 @@
 # Adaptive RL Intrusion Detection System
 
-This repository contains an adaptive intrusion detection system (IDS) built with reinforcement learning. It includes data preprocessing, model training, and anfrontend interface for experiment visualization.
+This repository contains an adaptive intrusion detection system (IDS) built with reinforcement learning. It includes data preprocessing, model training, and frontend interface for experiment visualization.
 
 ## What’s Included
 
@@ -67,4 +67,13 @@ Open the notebooks in `notebooks/` for step-by-step experiments and model evalua
 
 ---
 
+## Dashboard Demo
+https://github.com/user-attachments/assets/8ac9d6bb-9045-4611-836e-a0f84094ebea
+
 This repository is designed for academic experimentation with adaptive RL-based intrusion detection.
+
+
+
+
+
+
